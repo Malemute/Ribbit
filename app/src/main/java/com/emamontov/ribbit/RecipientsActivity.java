@@ -1,6 +1,7 @@
 package com.emamontov.ribbit;
 
 import android.app.AlertDialog;
+import android.net.Uri;
 import android.support.v4.app.NavUtils;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -15,10 +16,13 @@ import android.widget.ListView;
 
 import com.parse.FindCallback;
 import com.parse.ParseException;
+import com.parse.ParseFile;
+import com.parse.ParseObject;
 import com.parse.ParseQuery;
 import com.parse.ParseRelation;
 import com.parse.ParseUser;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class RecipientsActivity extends ActionBarActivity {
@@ -31,6 +35,8 @@ public class RecipientsActivity extends ActionBarActivity {
 
     protected MenuItem mSendMenuItem;
     protected ListView recipientsListView;
+    protected Uri mMediaUri;
+    protected String mFileType;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +55,9 @@ public class RecipientsActivity extends ActionBarActivity {
                 }
             }
         });
+
+        mMediaUri = getIntent().getData();
+        mFileType = getIntent().getExtras().getString(ParseConstants.KEY_FILE_TYPE);
     }
 
 
@@ -113,10 +122,49 @@ public class RecipientsActivity extends ActionBarActivity {
                 NavUtils.navigateUpFromSameTask(this);
                 return true;
             case R.id.action_send:
+                ParseObject message = creatdMessage();
+                // send(message);
                 return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
+
+    protected ParseObject creatdMessage() {
+        ParseObject message = new ParseObject(ParseConstants.CLASS_MESSAGES);
+        message.put(ParseConstants.KEY_SENDER_ID, ParseUser.getCurrentUser().getObjectId());
+        message.put(ParseConstants.KEY_SENDER_NAME, ParseUser.getCurrentUser().getUsername());
+        message.put(ParseConstants.KEY_RECIPIENT_IDS, getRecipientIds());
+        message.put(ParseConstants.KEY_FILE_TYPE, mFileType);
+
+        byte[] fileBytes = FileHelper.getByteArrayFromFile(this, mMediaUri);
+
+        if (fileBytes == null) {
+            return null;
+        }
+        else {
+            if (mFileType.equals(ParseConstants.TYPE_IMAGE)) {
+                fileBytes = FileHelper.reduceImageForUpload(fileBytes);
+            }
+
+            String fileName = FileHelper.getFileName(this, mMediaUri, mFileType);
+            ParseFile file = new ParseFile(fileName, fileBytes);
+            message.put(ParseConstants.KEY_FILE, file);
+            
+            return message;
+        }
+
+    }
+
+    protected ArrayList<String> getRecipientIds() {
+        ArrayList<String> recipientIds = new ArrayList<String>();
+        for (int i = 0; i < recipientsListView.getCount(); i++) {
+            if (recipientsListView.isItemChecked(i)) {
+                recipientIds.add(mFriends.get(i).getObjectId());
+            }
+        }
+        return recipientIds;
+    }
+
 
 }

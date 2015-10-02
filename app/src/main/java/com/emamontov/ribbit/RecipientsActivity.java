@@ -13,6 +13,7 @@ import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.parse.FindCallback;
 import com.parse.ParseException;
@@ -21,6 +22,7 @@ import com.parse.ParseObject;
 import com.parse.ParseQuery;
 import com.parse.ParseRelation;
 import com.parse.ParseUser;
+import com.parse.SaveCallback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -123,14 +125,26 @@ public class RecipientsActivity extends ActionBarActivity {
                 return true;
             case R.id.action_send:
                 ParseObject message = creatdMessage();
-                // send(message);
-                return true;
+                if (message == null) {
+                    // error
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setMessage(R.string.error_selecting_file)
+                            .setTitle(R.string.error_selecting_file_title)
+                            .setPositiveButton(android.R.string.ok, null);
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                }
+                else {
+                     send(message);
+                    finish();
+                }
+                 return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    protected ParseObject creatdMessage() {
+        protected ParseObject creatdMessage() {
         ParseObject message = new ParseObject(ParseConstants.CLASS_MESSAGES);
         message.put(ParseConstants.KEY_SENDER_ID, ParseUser.getCurrentUser().getObjectId());
         message.put(ParseConstants.KEY_SENDER_NAME, ParseUser.getCurrentUser().getUsername());
@@ -150,7 +164,7 @@ public class RecipientsActivity extends ActionBarActivity {
             String fileName = FileHelper.getFileName(this, mMediaUri, mFileType);
             ParseFile file = new ParseFile(fileName, fileBytes);
             message.put(ParseConstants.KEY_FILE, file);
-            
+
             return message;
         }
 
@@ -166,5 +180,25 @@ public class RecipientsActivity extends ActionBarActivity {
         return recipientIds;
     }
 
+    protected void send(ParseObject message) {
+        message.saveInBackground(new SaveCallback() {
+            @Override
+            public void done(ParseException e) {
+                if (e == null) {
+                    // success!
+                    Toast.makeText(RecipientsActivity.this, R.string.success_message, Toast.LENGTH_LONG).show();
+                }
+                else {
+                    // error
+                    AlertDialog.Builder builder = new AlertDialog.Builder(RecipientsActivity.this);
+                    builder.setMessage(R.string.error_sending_message)
+                            .setTitle(R.string.error_selecting_file_title)
+                            .setPositiveButton(android.R.string.ok, null);
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
 
+                }
+            }
+        });
+    }
 }
